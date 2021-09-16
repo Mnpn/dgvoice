@@ -52,6 +52,8 @@ var OnError = func(str string, err error) {
 	}
 }
 
+var stopPCM = false
+
 // SendPCM will receive on the provied channel encode
 // received PCM data into Opus then send that to Discordgo
 func SendPCM(v *discordgo.VoiceConnection, pcm <-chan []int16) {
@@ -69,11 +71,10 @@ func SendPCM(v *discordgo.VoiceConnection, pcm <-chan []int16) {
 	}
 
 	for {
-
 		// read pcm from chan, exit if channel is closed.
 		recv, ok := <-pcm
 		if !ok {
-			OnError("PCM Channel closed", nil)
+			//OnError("PCM Channel closed", nil)
 			return
 		}
 
@@ -91,7 +92,14 @@ func SendPCM(v *discordgo.VoiceConnection, pcm <-chan []int16) {
 		}
 		// send encoded opus data to the sendOpus channel
 		v.OpusSend <- opus
+		if stopPCM { stopPCM = false; break }
 	}
+}
+
+// StopPCM lets us cancel playback.
+func StopPCM() {
+	stopPCM = true
+	return
 }
 
 // ReceivePCM will receive on the the Discordgo OpusRecv channel and decode
@@ -138,7 +146,7 @@ func ReceivePCM(v *discordgo.VoiceConnection, c chan *discordgo.Packet) {
 }
 
 // PlayAudioFile will play the given filename to the already connected
-// Discord voice server/channel.  voice websocket and udp socket
+// Discord voice server/channel. voice websocket and udp socket
 // must already be setup before this will work.
 func PlayAudioFile(v *discordgo.VoiceConnection, filename string, stop <-chan bool) {
 
